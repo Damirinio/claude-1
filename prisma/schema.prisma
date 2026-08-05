@@ -1,0 +1,151 @@
+// Schema Prisma - CYS PRO CONSEIL - Application de gestion comptable et fiscale
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  DIRECTION
+  COLLABORATEUR
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(COLLABORATEUR)
+  actif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  clients           Client[]           @relation("CollabClients")
+  documents         Document[]
+  auditLogs         AuditLog[]
+  procedureVersions ProcedureVersion[]
+}
+
+model Client {
+  id                  String   @id @default(cuid())
+  nom                 String
+  siren               String?
+  formeJuridique      String?
+  regimeFiscal        String // IS | IR
+  regimeTVA           String // reel_normal | reel_simplifie | franchise
+  dateClotureExercice String // format MM-DD, ex "12-31"
+  statutDossier       String   @default("actif") // actif | suspendu | cloture
+  actif               Boolean  @default(true)
+  collaborateurId     String?
+  collaborateur       User?    @relation("CollabClients", fields: [collaborateurId], references: [id])
+  createdAt           DateTime @default(now())
+
+  echeances Echeance[]
+  ligneR23s LigneR23[]
+  ligneR10s LigneR10[]
+  documents Document[]
+}
+
+model Echeance {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type         String // TVA_CA3 | TVA_CA12 | IS_ACOMPTE | IS_SOLDE | CFE_SOLDE | CFE_ACOMPTE | CVAE_ACOMPTE | CVAE_SOLDE | CVAE_DECLARATION | LIASSE_FISCALE | DEPOT_COMPTES | DAS2 | AUTRE
+  libelle      String
+  dateEcheance DateTime
+  statut       String   @default("a_faire") // a_faire | en_cours | termine
+  commentaire  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LigneR23 {
+  id                    String   @id @default(cuid())
+  clientId              String
+  client                Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  collaborateur         String?
+  periode               String // "2026-01"
+  typeOperation         String? // tenue | revision | bilan | ...
+  saisieStatut          String   @default("a_faire")
+  rapprochementBancaire String   @default("a_faire")
+  situationStatut       String   @default("a_faire")
+  tvaStatut             String   @default("a_faire")
+  bilanStatut           String   @default("a_faire")
+  remarques             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model LigneR10 {
+  id                    String    @id @default(cuid())
+  clientId              String
+  client                Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  collaborateur         String?
+  mois                  Int
+  annee                 Int
+  tvaCollectee          Float     @default(0)
+  tvaDeductible         Float     @default(0)
+  statutDeclaration     String    @default("a_faire") // a_faire | en_cours | termine
+  situationParticuliere String?
+  dateDeclaration       DateTime?
+  remarques             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  exercice     String
+  categorie    String // BILAN | COMPTE_RESULTAT | LIASSE_FISCALE | DECLARATION_TVA | PIECE_COMPTABLE | COURRIER_FISCAL | DOCUMENT_CLIENT
+  nom          String
+  version      Int      @default(1)
+  filePath     String?
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+}
+
+model Procedure {
+  id        String   @id @default(cuid())
+  categorie String
+  titre     String
+  contenu   String
+  ordre     Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  versions ProcedureVersion[]
+}
+
+model ProcedureVersion {
+  id          String    @id @default(cuid())
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  contenu     String
+  updatedById String?
+  updatedBy   User?     @relation(fields: [updatedById], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model AlerteConfig {
+  id         String  @id @default(cuid())
+  joursAvant Int     @unique // 30, 15, 7, 1
+  actif      Boolean @default(true)
+}
