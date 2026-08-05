@@ -1,0 +1,23 @@
+name: Seed Turso database
+
+# Manual, on-demand job to load demo data into a Turso database — an
+# alternative to Render's Shell tab (which requires a paid plan) or running
+# `npx prisma db seed` from a local machine. Requires the TURSO_DATABASE_URL
+# and TURSO_AUTH_TOKEN repository secrets to be set (Settings → Secrets and
+# variables → Actions), then trigger from the Actions tab.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx prisma db seed
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

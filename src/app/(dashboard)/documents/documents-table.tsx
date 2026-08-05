@@ -10,7 +10,7 @@ type Doc = {
   categorie: string;
   nom: string;
   version: number;
-  filePath: string | null;
+  hasFile: boolean;
   createdAt: Date;
   client: { id: string; nom: string };
   uploadedBy: { id: string; name: string } | null;
@@ -121,7 +121,7 @@ export function DocumentsTable({ documents }: { documents: Doc[] }) {
                 <td className="px-4 py-3 text-slate-600">{d.uploadedBy?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-slate-500">{formatDateFr(d.createdAt)}</td>
                 <td className="px-4 py-3 text-right">
-                  {d.filePath ? (
+                  {d.hasFile ? (
                     <a
                       href={`/api/documents/${d.id}`}
                       className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
