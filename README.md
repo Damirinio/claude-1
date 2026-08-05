@@ -31,8 +31,11 @@ journalisée dans un journal d'audit (utilisateur, date, heure, action).
 
 - [Next.js 16](https://nextjs.org) (App Router, Server Actions, Turbopack)
 - TypeScript, Tailwind CSS
-- [Prisma 7](https://www.prisma.io) + SQLite (via `@prisma/adapter-better-sqlite3`)
+- [Prisma 7](https://www.prisma.io) + SQLite en local (`@prisma/adapter-better-sqlite3`)
+  ou [Turso](https://turso.tech)/libSQL en production (`@prisma/adapter-libsql`)
 - Authentification par session (cookie JWT signé, `jose` + `bcryptjs`)
+- Documents stockés directement en base (colonne binaire) : aucun disque ni
+  volume à gérer, quel que soit l'hébergeur.
 
 ## Démarrage
 
@@ -65,60 +68,54 @@ les collaborateurs suivants (mot de passe commun : `CysPro2026!`) :
   cas avec le calendrier officiel de la DGFiP.
 - Le client Prisma est généré dans `src/generated/prisma` (non versionné) : lancez
   `npx prisma generate` après chaque `npm install` si le dossier est absent.
-- Les documents téléversés sont stockés sur disque à l'emplacement défini par
-  `DOCUMENTS_STORAGE_DIR` (par défaut `storage/documents/`, non versionné).
+- Les documents téléversés sont stockés directement en base de données (aucun
+  fichier sur disque), ce qui permet de déployer sur un hébergeur sans disque
+  persistant.
 
 ## Déploiement
 
-L'application utilise SQLite en fichier local : elle a donc besoin d'un
-hébergeur avec **disque persistant** (elle ne fonctionne pas telle quelle sur
-une plateforme serverless comme Vercel, dont le système de fichiers est
-éphémère, sans migrer la base vers un service hébergé type Postgres/Turso).
+### Option gratuite recommandée : Render + Turso
 
-`npm run build` génère automatiquement le client Prisma (`postinstall`), et
-`npm run start` applique les migrations en attente (`prisma migrate deploy`)
-avant de démarrer le serveur — aucune étape manuelle n'est nécessaire à chaque
-déploiement, hormis la création du jeu de données initial (une seule fois).
+Cette combinaison ne coûte rien, n'exige pas de carte bancaire et autorise
+l'usage professionnel. Contrepartie du plan gratuit : le service s'endort
+après 15 minutes sans visite et met environ une minute à se réveiller au
+prochain accès — acceptable pour un outil interne consulté quelques fois par
+jour.
 
-### Option recommandée : Railway
-
-1. Sur [railway.com](https://railway.com), **New Project → Deploy from GitHub repo**
-   et sélectionnez `Damirinio/claude-1`, branche `main` (ou celle que vous
-   souhaitez mettre en production).
-2. Railway détecte Next.js automatiquement (Nixpacks) et utilise les scripts
-   `build`/`start` du `package.json`.
-3. **Ajoutez un volume** (onglet *Volumes*) monté sur `/data`.
-4. Renseignez les variables d'environnement du service :
-   - `DATABASE_URL` = `file:/data/prod.db`
-   - `DOCUMENTS_STORAGE_DIR` = `/data/documents`
-   - `SESSION_SECRET` = une chaîne aléatoire longue (`openssl rand -base64 48`)
-5. Déployez. Une fois le premier déploiement terminé, initialisez les données
-   de démonstration (facultatif) en une seule fois avec le CLI Railway :
+1. **Créer la base de données (Turso, gratuit) :**
+   - Sur [turso.tech](https://turso.tech), créez un compte puis une base
+     (aucune carte requise).
+   - Récupérez son URL de connexion (`libsql://....turso.io`) et créez un
+     jeton d'accès (« Create Token »).
+2. **Déployer l'application (Render, gratuit) :**
+   - Sur [render.com](https://render.com) : **New → Blueprint**, sélectionnez
+     le dépôt `Damirinio/claude-1`. Render lit `render.yaml` à la racine du
+     projet et propose la configuration (plan *Free*, `SESSION_SECRET` généré
+     automatiquement).
+   - Il vous demande deux valeurs : collez-y l'URL et le jeton Turso récupérés
+     à l'étape précédente (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
+   - Validez. Render construit et démarre l'application ; les migrations sont
+     appliquées automatiquement au démarrage (`prisma migrate deploy`).
+3. **Charger les données de démonstration (une seule fois, facultatif) :**
+   depuis l'onglet *Shell* du service Render :
    ```bash
-   railway run npx prisma db seed
+   npx prisma db seed
    ```
-6. Railway fournit un domaine public (`*.up.railway.app`) dans l'onglet
-   *Settings → Networking*.
+4. Le lien public de l'application est affiché en haut de la page du service
+   sur Render (`https://<nom-du-service>.onrender.com`).
 
-Coût indicatif : plan Hobby à 5 $/mois (crédit d'usage inclus, généralement
-suffisant pour un usage interne de ce type) + un coût marginal de stockage du
-volume ([tarifs Railway](https://docs.railway.com/pricing/plans)).
+Sources : [tarifs Turso](https://turso.tech/pricing) (5 Go gratuits, sans
+carte), [tarifs Render](https://render.com/docs/free) (750 h/mois gratuites,
+usage commercial autorisé, sans carte).
 
-### Alternative : Render
+### Alternative payante (pas de mise en veille) : Railway
 
-Un blueprint `render.yaml` est fourni à la racine du projet (service web +
-disque persistant de 1 Go monté sur `/data`). Sur
-[render.com](https://render.com) : **New → Blueprint**, sélectionnez le repo,
-Render lit `render.yaml` et propose la configuration prête à valider (le
-`SESSION_SECRET` est généré automatiquement). Une fois déployé, lancez le
-seed initial depuis l'onglet *Shell* du service :
-```bash
-npx prisma db seed
-```
-
-Coût indicatif : plan Starter à partir de ~7,25 $/mois (7 $ de calcul + disque
-persistant 1 Go), car les disques persistants ne sont pas disponibles sur le
-plan gratuit ([tarifs Render](https://render.com/articles/how-much-does-cloud-application-hosting-cost-for-small-businesses)).
+Si l'endormissement après inactivité est gênant, Railway (~5 $/mois, plan
+Hobby) fonctionne avec le même dépôt sans aucune modification : **New Project
+→ Deploy from GitHub repo** → `Damirinio/claude-1`, puis dans les
+*Variables* du service, renseignez `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+et `SESSION_SECRET` (les mêmes valeurs Turso que ci-dessus). Aucun volume à
+créer, la base restant sur Turso.
 
 ### Après le déploiement
 

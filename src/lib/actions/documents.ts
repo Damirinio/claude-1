@@ -1,12 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import path from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { DOCUMENTS_STORAGE_ROOT as STORAGE_ROOT } from "@/lib/storage";
 
 export async function uploadDocument(formData: FormData) {
   const user = await getCurrentUser();
@@ -31,15 +28,12 @@ export async function uploadDocument(formData: FormData) {
   });
   const version = (previousVersion?.version ?? 0) + 1;
 
-  let filePath: string | null = null;
+  let content: Uint8Array<ArrayBuffer> | null = null;
+  let mimeType: string | null = null;
   if (file instanceof File && file.size > 0) {
-    const clientDir = path.join(STORAGE_ROOT, clientId);
-    await mkdir(clientDir, { recursive: true });
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storedName = `${Date.now()}-v${version}-${safeName}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(clientDir, storedName), buffer);
-    filePath = path.join(clientId, storedName);
+    // File.arrayBuffer() always yields a real ArrayBuffer (never SharedArrayBuffer).
+    content = new Uint8Array(await file.arrayBuffer()) as Uint8Array<ArrayBuffer>;
+    mimeType = file.type || "application/octet-stream";
   }
 
   const document = await prisma.document.create({
@@ -49,7 +43,8 @@ export async function uploadDocument(formData: FormData) {
       categorie,
       nom,
       version,
-      filePath,
+      content,
+      mimeType,
       uploadedById: user.id,
     },
   });

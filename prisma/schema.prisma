@@ -105,7 +105,8 @@ model Document {
   categorie    String // BILAN | COMPTE_RESULTAT | LIASSE_FISCALE | DECLARATION_TVA | PIECE_COMPTABLE | COURRIER_FISCAL | DOCUMENT_CLIENT
   nom          String
   version      Int      @default(1)
-  filePath     String?
+  content      Bytes?
+  mimeType     String?
   uploadedById String?
   uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())

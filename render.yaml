@@ -2,7 +2,7 @@ services:
   - type: web
     name: cys-pro-conseil
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npm run start
     envVars:
@@ -10,11 +10,7 @@ services:
         value: 22
       - key: SESSION_SECRET
         generateValue: true
-      - key: DATABASE_URL
-        value: file:/data/prod.db
-      - key: DOCUMENTS_STORAGE_DIR
-        value: /data/documents
-    disk:
-      name: cys-pro-conseil-data
-      mountPath: /data
-      sizeGB: 1
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
