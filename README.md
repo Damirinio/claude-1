@@ -94,14 +94,21 @@ jour.
      automatiquement).
    - Il vous demande deux valeurs : collez-y l'URL et le jeton Turso récupérés
      à l'étape précédente (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
-   - Validez. Render construit et démarre l'application ; les migrations sont
-     appliquées automatiquement au démarrage (`prisma migrate deploy`).
-3. **Charger les données de démonstration (une seule fois, facultatif) :**
-   depuis l'onglet *Shell* du service Render :
+   - Validez. Render construit et démarre l'application.
+3. **Créer les tables sur Turso (une seule fois, obligatoire) :** `prisma
+   migrate deploy` n'est pas pris en charge par Turso ([limitation connue de
+   Prisma](https://www.prisma.io/docs/orm/overview/databases/turso#caveats)),
+   donc le schéma doit être appliqué directement une fois, depuis l'onglet
+   *Shell* du service Render :
+   ```bash
+   node scripts/apply-turso-migrations.mjs
+   ```
+4. **Charger les données de démonstration (une seule fois, facultatif) :**
+   toujours depuis le *Shell* Render :
    ```bash
    npx prisma db seed
    ```
-4. Le lien public de l'application est affiché en haut de la page du service
+5. Le lien public de l'application est affiché en haut de la page du service
    sur Render (`https://<nom-du-service>.onrender.com`).
 
 Sources : [tarifs Turso](https://turso.tech/pricing) (5 Go gratuits, sans
