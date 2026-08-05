@@ -94,26 +94,36 @@ jour.
      automatiquement).
    - Il vous demande deux valeurs : collez-y l'URL et le jeton Turso récupérés
      à l'étape précédente (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`).
-   - Validez. Render construit et démarre l'application.
-3. **Créer les tables sur Turso (une seule fois, obligatoire) :** `prisma
-   migrate deploy` n'est pas pris en charge par Turso ([limitation connue de
-   Prisma](https://www.prisma.io/docs/orm/overview/databases/turso#caveats)),
-   donc le schéma doit être appliqué directement une fois, depuis l'onglet
-   *Shell* du service Render :
-   ```bash
-   node scripts/apply-turso-migrations.mjs
-   ```
-4. **Charger les données de démonstration (une seule fois, facultatif) :**
-   toujours depuis le *Shell* Render :
-   ```bash
-   npx prisma db seed
-   ```
-5. Le lien public de l'application est affiché en haut de la page du service
+   - Validez. Render construit et démarre l'application. `prisma migrate
+     deploy` n'étant pas compatible avec Turso ([limitation connue de
+     Prisma](https://www.prisma.io/docs/orm/overview/databases/turso#caveats)),
+     le schéma est créé automatiquement au démarrage par un script maison
+     (`scripts/apply-turso-migrations.mjs`) — aucune action manuelle requise,
+     et donc pas besoin de l'onglet *Shell* de Render (qui nécessite un plan
+     payant).
+3. Le lien public de l'application est affiché en haut de la page du service
    sur Render (`https://<nom-du-service>.onrender.com`).
 
 Sources : [tarifs Turso](https://turso.tech/pricing) (5 Go gratuits, sans
 carte), [tarifs Render](https://render.com/docs/free) (750 h/mois gratuites,
 usage commercial autorisé, sans carte).
+
+### Données de démonstration (facultatif)
+
+`npx prisma db seed` charge 12 clients fictifs et les comptes de test —
+pratique pour explorer l'application, mais pas nécessaire pour l'utiliser.
+Sans accès Shell (payant sur Render), un workflow GitHub Actions
+(`.github/workflows/seed-turso.yml`, déjà inclus dans le dépôt) permet de le
+lancer gratuitement :
+
+1. Sur GitHub, dans le dépôt : **Settings → Secrets and variables → Actions →
+   New repository secret**, ajoutez `TURSO_DATABASE_URL` et
+   `TURSO_AUTH_TOKEN` (les mêmes valeurs que sur Render).
+2. Onglet **Actions** du dépôt → workflow *Seed Turso database* → **Run
+   workflow**.
+
+Sans cette étape, l'application démarre avec une base vide : créez vos clients
+réels via le bouton « Nouveau client ».
 
 ### Alternative payante (pas de mise en veille) : Railway
 

@@ -3,13 +3,11 @@
 // directly, which Turso's HTTP protocol doesn't provide). This script is the
 // documented workaround: it applies each migration.sql file directly through
 // the libSQL client, in the same order Prisma generated them, keeping its own
-// bookkeeping table so it can be re-run safely as new migrations are added
-// later (already-applied ones are skipped).
-//
-// Run this once against a fresh Turso database, before the app's first real
-// use, then again after every future migration:
-// `node scripts/apply-turso-migrations.mjs` (with TURSO_DATABASE_URL and
-// TURSO_AUTH_TOKEN set in the environment — e.g. from Render's Shell tab).
+// bookkeeping table so it's safe to run on every boot — already-applied
+// migrations are skipped, only new ones run. scripts/start.mjs calls this
+// automatically when TURSO_DATABASE_URL is set; it can also be run by hand
+// (`node scripts/apply-turso-migrations.mjs`) with TURSO_DATABASE_URL and
+// TURSO_AUTH_TOKEN set in the environment.
 import { createClient } from "@libsql/client";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";

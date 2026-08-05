@@ -1,7 +1,9 @@
 // `prisma migrate deploy` only works against a real database connection
 // string (local SQLite file, Postgres, etc.) — it is not supported against
-// Turso/libSQL. When TURSO_DATABASE_URL is set we skip it: the schema must
-// already have been applied once via scripts/apply-turso-migrations.mjs.
+// Turso/libSQL. When TURSO_DATABASE_URL is set we run our own libSQL-based
+// migration runner instead (scripts/apply-turso-migrations.mjs), which is
+// idempotent, so it's safe to run automatically on every boot — no manual
+// Shell step needed (Shell requires a paid Render plan).
 import { spawnSync } from "node:child_process";
 
 function run(command, args) {
@@ -12,10 +14,7 @@ function run(command, args) {
 }
 
 if (process.env.TURSO_DATABASE_URL) {
-  console.log(
-    "TURSO_DATABASE_URL détecté : `prisma migrate deploy` est ignoré (non supporté par Turso). " +
-      "Assurez-vous d'avoir appliqué le schéma une fois via `node scripts/apply-turso-migrations.mjs`.",
-  );
+  run("node", ["scripts/apply-turso-migrations.mjs"]);
 } else {
   run("npx", ["prisma", "migrate", "deploy"]);
 }
