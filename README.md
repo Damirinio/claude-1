@@ -65,5 +65,64 @@ les collaborateurs suivants (mot de passe commun : `CysPro2026!`) :
   cas avec le calendrier officiel de la DGFiP.
 - Le client Prisma est généré dans `src/generated/prisma` (non versionné) : lancez
   `npx prisma generate` après chaque `npm install` si le dossier est absent.
-- Les documents téléversés sont stockés sur disque dans `storage/documents/`
-  (non versionné).
+- Les documents téléversés sont stockés sur disque à l'emplacement défini par
+  `DOCUMENTS_STORAGE_DIR` (par défaut `storage/documents/`, non versionné).
+
+## Déploiement
+
+L'application utilise SQLite en fichier local : elle a donc besoin d'un
+hébergeur avec **disque persistant** (elle ne fonctionne pas telle quelle sur
+une plateforme serverless comme Vercel, dont le système de fichiers est
+éphémère, sans migrer la base vers un service hébergé type Postgres/Turso).
+
+`npm run build` génère automatiquement le client Prisma (`postinstall`), et
+`npm run start` applique les migrations en attente (`prisma migrate deploy`)
+avant de démarrer le serveur — aucune étape manuelle n'est nécessaire à chaque
+déploiement, hormis la création du jeu de données initial (une seule fois).
+
+### Option recommandée : Railway
+
+1. Sur [railway.com](https://railway.com), **New Project → Deploy from GitHub repo**
+   et sélectionnez `Damirinio/claude-1`, branche `main` (ou celle que vous
+   souhaitez mettre en production).
+2. Railway détecte Next.js automatiquement (Nixpacks) et utilise les scripts
+   `build`/`start` du `package.json`.
+3. **Ajoutez un volume** (onglet *Volumes*) monté sur `/data`.
+4. Renseignez les variables d'environnement du service :
+   - `DATABASE_URL` = `file:/data/prod.db`
+   - `DOCUMENTS_STORAGE_DIR` = `/data/documents`
+   - `SESSION_SECRET` = une chaîne aléatoire longue (`openssl rand -base64 48`)
+5. Déployez. Une fois le premier déploiement terminé, initialisez les données
+   de démonstration (facultatif) en une seule fois avec le CLI Railway :
+   ```bash
+   railway run npx prisma db seed
+   ```
+6. Railway fournit un domaine public (`*.up.railway.app`) dans l'onglet
+   *Settings → Networking*.
+
+Coût indicatif : plan Hobby à 5 $/mois (crédit d'usage inclus, généralement
+suffisant pour un usage interne de ce type) + un coût marginal de stockage du
+volume ([tarifs Railway](https://docs.railway.com/pricing/plans)).
+
+### Alternative : Render
+
+Un blueprint `render.yaml` est fourni à la racine du projet (service web +
+disque persistant de 1 Go monté sur `/data`). Sur
+[render.com](https://render.com) : **New → Blueprint**, sélectionnez le repo,
+Render lit `render.yaml` et propose la configuration prête à valider (le
+`SESSION_SECRET` est généré automatiquement). Une fois déployé, lancez le
+seed initial depuis l'onglet *Shell* du service :
+```bash
+npx prisma db seed
+```
+
+Coût indicatif : plan Starter à partir de ~7,25 $/mois (7 $ de calcul + disque
+persistant 1 Go), car les disques persistants ne sont pas disponibles sur le
+plan gratuit ([tarifs Render](https://render.com/articles/how-much-does-cloud-application-hosting-cost-for-small-businesses)).
+
+### Après le déploiement
+
+- Changez le mot de passe des comptes de démonstration (ou remplacez le jeu de
+  données de seed par vos vrais utilisateurs) avant tout usage réel.
+- Ne relancez jamais `prisma db seed` sur une base contenant déjà des données
+  réelles : le script vide toutes les tables avant de les repeupler.

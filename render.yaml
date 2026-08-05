@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cys-pro-conseil
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        value: file:/data/prod.db
+      - key: DOCUMENTS_STORAGE_DIR
+        value: /data/documents
+    disk:
+      name: cys-pro-conseil-data
+      mountPath: /data
+      sizeGB: 1

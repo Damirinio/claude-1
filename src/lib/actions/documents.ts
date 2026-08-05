@@ -6,8 +6,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-
-const STORAGE_ROOT = path.join(process.cwd(), "storage", "documents");
+import { DOCUMENTS_STORAGE_ROOT as STORAGE_ROOT } from "@/lib/storage";
 
 export async function uploadDocument(formData: FormData) {
   const user = await getCurrentUser();
